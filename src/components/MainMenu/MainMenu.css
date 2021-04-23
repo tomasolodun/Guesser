@@ -1,0 +1,16 @@
+
+.menu-container-base{
+  display: flex;
+  justify-content: center;
+}
+
+.container-inside{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 20%;
+}
+
+.MuiButton-containedPrimary{
+  margin: 5px;
+}
