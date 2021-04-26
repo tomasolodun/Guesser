@@ -1,0 +1,21 @@
+.primary{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  &>span{
+    display: flex;
+    align-items: center;
+    color: white;
+    height: 90%;
+    padding: 15px;
+  }
+  &>div{
+    display: flex;
+    align-items: center;
+    font-size: 20px;
+    color: white;
+    height: 90%;
+    padding: 0;
+  }
+}

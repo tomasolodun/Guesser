@@ -6,7 +6,6 @@ import GamePage from './components/GamePage/GamePage';
 import { Route, Switch } from 'react-router-dom';
 import { ROUTES } from './core/routes';
 import WelcomePage from './components/WelcomePage/WelcomePage';
-import HeaderComponent from './components/HeaderComponent/Header';
 
 const App = () => {
   return (

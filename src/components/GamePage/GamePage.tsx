@@ -1,40 +1,41 @@
 import {Button, TextField} from '@material-ui/core';
 import React, {Fragment, SyntheticEvent, useEffect, useState} from 'react';
 import {StylesProvider} from '@material-ui/core/styles';
-import './GamePage.scss';
+import s from './GamePage.module.scss';
 import GameLocalHistory from '../GameLocalHistory/GameLocalHistory';
 import {TimelineMax} from 'gsap';
 import HeaderComponent from '../HeaderComponent/Header';
+import {selectorGetSettings} from '../../redux/settings/selector';
+import {Store} from '../../redux/root';
+import {connect} from 'react-redux';
+import {IDifficult} from '../../redux/settings/interfaces';
 
 function getRandomArbitrary(min: number, max: number) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 const GuessResultType = Object.freeze({lower: 1, bigger: 2});
+
 export interface IGuess {
   guessNumber: number;
   guessResultType: number;
   isWin: boolean;
 }
-export interface IDifficult {
-  retriesCount: number;
-  numberFrom: number;
-  numberTo: number;
-}
-
-const difficulties: Array<IDifficult> = [{retriesCount: 12, numberFrom: -10000, numberTo: 10000}];
 
 const getNumberToGuess = (numberFrom: number, numberTo: number) => {
   return getRandomArbitrary(getRandomArbitrary(numberFrom, numberTo / 10), getRandomArbitrary(numberTo / 10, numberTo));
 };
 
-const retriesCount = 12;
-const GamePage: React.FC = () => {
+const GamePage: React.FC = ({settings}: any) => {
   const [inputNumber, setInputNumber] = useState(0);
   const [guessingHistory, setGuessHistory] = useState<Array<IGuess>>([]);
-  const [currentGameRetriesRemained, setCurrentGameRetriesRemained] = useState(retriesCount);
+  const [currentGameRetriesRemained, setCurrentGameRetriesRemained] = useState(settings.difficult.retriesCount);
   const [showResultComponent, setShowResultComponent] = useState({display: false, type: 'Lose'});
   const [isTryButtonDisabled, setIsTryButtonDisabled] = useState(false);
-  const [randomNumber, setRandomNumber] = useState(getNumberToGuess(-10000, 10000));
+  const [randomNumber, setRandomNumber] = useState(
+    getNumberToGuess(settings.difficult.numberFrom, settings.difficult.numberTo)
+  );
+  const [hints, setHints] = useState({min: settings.difficult.numberFrom, max: settings.difficult.numberTo});
+
   const pewOnClick = (isLeft: boolean) => {
     let timeLine = new TimelineMax({
       paused: false,
@@ -79,7 +80,8 @@ const GamePage: React.FC = () => {
         height: '100%',
       });
   };
-  const tryButtonOnClick = (event: any) => {
+
+  const tryButtonOnClick = () => {
     console.log(randomNumber);
     let historyElement = {
       guessNumber: inputNumber,
@@ -92,19 +94,49 @@ const GamePage: React.FC = () => {
       return [...prevState, historyElement];
     });
     setCurrentGameRetriesRemained(currentGameRetriesRemained - 1);
+    setHints((prevState) => {
+      return {
+        min:
+          historyElement.guessResultType === GuessResultType.bigger && prevState.min < inputNumber - -1
+            ? inputNumber - -1
+            : prevState.min,
+        max:
+          historyElement.guessResultType === GuessResultType.lower && prevState.max > inputNumber - 1
+            ? inputNumber - 1
+            : prevState.max,
+      };
+    });
   };
+
+  
+  
+
   useEffect(() => {
     if (!!guessingHistory.length && guessingHistory[guessingHistory.length - 1].guessNumber == randomNumber) {
       setShowResultComponent((prevState) => {
         return {...prevState, display: true, type: 'Victory'};
       });
     }
-    if (currentGameRetriesRemained === 0) {
+    if (currentGameRetriesRemained === 0 && guessingHistory[guessingHistory.length - 1].guessNumber != randomNumber) {
       setShowResultComponent((prevState) => {
         return {...prevState, display: true, type: 'Defeat'};
       });
     }
-  }, [currentGameRetriesRemained]);
+    const handleButtonPress = (event:any) => {
+      if (!isTryButtonDisabled && !showResultComponent.display){
+        switch (event.key) {
+          case 'Enter':
+            tryButtonOnClick();
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    document.addEventListener("keydown", handleButtonPress);
+    return () => {document.removeEventListener("keydown", handleButtonPress)};
+  }, [currentGameRetriesRemained, isTryButtonDisabled]);
+
   const guessInputOnChange = (event: any) => {
     setInputNumber(event.target.value);
     setIsTryButtonDisabled(false);
@@ -113,24 +145,25 @@ const GamePage: React.FC = () => {
     setInputNumber(0);
     setGuessHistory([]);
     setCurrentGameRetriesRemained(difficult.retriesCount);
-    setRandomNumber(getNumberToGuess(-10000, 10000));
+    setRandomNumber(getNumberToGuess(settings.difficult.numberFrom, settings.difficult.numberTo));
     setShowResultComponent({display: false, type: 'Lose'});
+    setHints({min: settings.difficult.numberFrom, max: settings.difficult.numberTo});
   };
   return (
     <StylesProvider injectFirst>
       <Fragment>
         <HeaderComponent></HeaderComponent>
-        <div className="game-page-root">
+        <div className={s.gamePageRoot}>
           {!!guessingHistory.length && <GameLocalHistory guessingHistory={guessingHistory} />}
           {showResultComponent.display ? (
-            <div className="gameResultContainer">
-              <div className="gameResult">{showResultComponent.type}</div>
+            <div className={s.gameResultContainer}>
+              <div className={s.gameResult}>{showResultComponent.type}</div>
               <Button
-                className="guess-button"
+                className={s.guessButton}
                 variant="contained"
                 color="primary"
                 onClick={() => {
-                  startNewGame(difficulties[0]);
+                  startNewGame(settings.difficult);
                 }}
               >
                 New game
@@ -141,17 +174,27 @@ const GamePage: React.FC = () => {
               <div style={{color: 'white', fontSize: '25px', margin: '20px'}}>
                 Retries remained = {currentGameRetriesRemained}
               </div>
-              <TextField
-                className="guess-input"
-                id="outlined-basic"
-                label="GUESS"
-                variant="outlined"
-                type="number"
-                onChange={guessInputOnChange}
-              />
-              <Button className="guess-button" variant="contained" color="primary" onClick={tryButtonOnClick} disabled={isTryButtonDisabled}>
+              <div className={s.inputContainer}>
+                {settings.isHintModeEnabled && <div className={s.hint}>{hints.min}</div>}
+                <TextField
+                  className={s.guessInput}
+                  id="outlined-basic"
+                  label="GUESS"
+                  variant="outlined"
+                  type="number"
+                  onChange={guessInputOnChange}
+                />
+                {settings.isHintModeEnabled && <div className={s.hint}>{hints.max}</div>}
+              </div>
+              <Button
+                className={s.guessButton}
+                variant="contained"
+                color="primary"
+                onClick={tryButtonOnClick}
+                disabled={isTryButtonDisabled}
+              >
                 Try
-                <div className="pew"></div>
+                <div className={"pew"}></div>
               </Button>
             </>
           )}
@@ -161,4 +204,8 @@ const GamePage: React.FC = () => {
   );
 };
 
-export default GamePage;
+const mapStateToProps = (state: Store) => ({
+  settings: selectorGetSettings(state),
+});
+
+export default connect(mapStateToProps)(GamePage);

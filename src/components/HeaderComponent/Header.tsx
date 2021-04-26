@@ -1,13 +1,21 @@
-import {Avatar, Button, List, ListItem, ListItemText, ListSubheader, TextField} from '@material-ui/core';
+import {Avatar, Button} from '@material-ui/core';
 import React, {SyntheticEvent, useState} from 'react';
-import {StylesProvider} from '@material-ui/core/styles';
 import s from './Header.module.scss';
 import {ROUTES} from '../../core/routes';
 import {useHistory} from 'react-router-dom';
+import CheckBox from '../CheckBox/CheckBox';
+import {connect} from 'react-redux';
+import {selectorGetSettings} from '../../redux/settings/selector';
+import {Store} from '../../redux/root';
+import {updateSettings} from '../../redux/settings/actions';
 
-const HeaderComponent = (props: any) => {
+const HeaderComponent = ({updateSettings}: any) => {
   const history = useHistory();
-  console.log(history);
+  const [isHintModeEnabled, setIsHintModeEnabled] = useState(false);
+  const handleHintModeChange = (event: any) => {
+    setIsHintModeEnabled(event.target.checked);
+    updateSettings({isHintModeEnabled:event.target.checked})
+  };
   return (
     <div className={s.headerContainer}>
       <div className={s.headerLeftSide}>
@@ -21,6 +29,9 @@ const HeaderComponent = (props: any) => {
         >
           Menu
         </Button>
+        {history.location.pathname === '/game' ? (
+          <CheckBox value={isHintModeEnabled} handler={handleHintModeChange} type={'primary'}></CheckBox>
+        ) : null}
         {/* <Button></Button> */}
       </div>
       <div className={s.headerRightSide}>
@@ -40,4 +51,12 @@ const HeaderComponent = (props: any) => {
   );
 };
 
-export default HeaderComponent;
+const mapStateToProps = (state: Store) => ({
+  settings: selectorGetSettings(state),
+});
+
+const mapDispatchToProps = {
+  updateSettings
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(HeaderComponent);
